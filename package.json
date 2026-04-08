@@ -1,0 +1,21 @@
+{
+  "name": "playwright-login",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "main": "tsx main.ts",
+    "login": "tsx login.ts",
+    "check-status": "tsx checkStatus.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "playwright": "^1.48.0",
+    "unzipper": "^0.10.14"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/unzipper": "^0.10.11",
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "cookies": [
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "APEIKOPDFGMMBCCDKNBCDHKCKJGADHGJCPKOKIFGJMOFPMLOLMFHHJABIOFGOCIOHBGDFHBKDICHFDELKMDAPMIJMMGOGMOHILACDGINCGCBCNBNNHJFBJGJIMAHPIEE",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/gobmx/assets/fonts/bootstrap",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "EPJBOBLKAGPDJOHNPANNPAGKBALLPHEBFIMOKACJKLIOAPBKEBJAHKLBENFFHHCMLEODBNCBFIBEMBPPCAJAFCNGMMNECJIDDGENHGHBBPABOBHGHOGOIBANPFDGNFMF",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/cryptoJS/rollups",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "KBJMPGLKFKDJLIBAJGDPNIJGGFHNABOIBKMNLNBGKDFGJOHBNEGDEDLEJBEDOPFOIEBDPLFFGILJNGEIFBIANEAEHMNNHDPAJNOEKAKEDAKMOBLCEJJJNFNHGCKEBAFG",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/jsrsasign/ext",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "JGGOOHLIEALDGOIKEOCHJLMGKDGAPPDALMALBNBEFIDMAJMABMDDJFPNNHKHKJILANIDIHGMAJKEAONFGMHAMMCGMMKIFGDMEIHFGIJLAMHBFDNCHCOAINNFFHNPBGDC",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/gobmx/assets/scripts",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "EELCOHLHGLEPOBMMCKOLONBEHKDOPEHPFDDIEKJOOKOKBBPJEOGFMKECLHGLKKDCJBJDLNIBFIEPBHGKJBCAKLACMMNAEEKKAGLFBFDPPBJACIGIHMBDHGGCNNOIHCMC",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/jsrsasign",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "GDDJOMKEHPNLHAGFLGJNEPKMKEODENMDPFOINEBBLHKDMFHMKNFEDFLAPDNHDNPMFKBDLEOCIIIDENKCBDBAOGJJEMAJOFOGJODGCFINMCBJHINPGIFKOAKNDIFHFEJJ",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/gobmx/assets/styles",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "JCEJHIBDDOONJJLEEMKICEECMKHKKBNCEOFFIBOAOEFDMGEJLMCNIOFHEHOBFALGIDIDJLEMFIPLAPDJFFOAFHGBMMALMGDNELFMMDMKICOEICIMHBIPPOGEFFFLFBNA",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/jquery",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "EOPMBPHNLAFCEFOMELADDGMOHPHEPPLLOHKHFLOGLAEAMKLGOMDBGIDHLPLGKOBINNFDPFNKKIJDGCDMHPDABGPJEMBCKFMDCANHMLNHLBHIMCDMGEGMMKDIJPOENAIG",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/sjcl",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "LOFGBHCCLHCEDHDAFMFMPOLDBMKIELEONMDCPAPNBMJOKADKCJJDNMEDNJEJLOOBPALDKBFFGIMCCFJFIMLAGMPIHMMKKIGBIPOIAOFBKOPEOCJBODKMAPANJEGFCFDG",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/asn1",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "IANHFOJFNPICHHCIOAMIKBNPCIMPONDJGEHMJMODFEJIADCCMLGLEGJJNFIJKIEMELEDPBIMGILOFJKHKIKANFNAHMDKJPJFFGKOCICIMLANOCEGOMPCDJMAOEKIMOLL",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/x509SAT/js/sat",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ZNPCQ003-32383200",
+      "value": "3248ae55",
+      "domain": ".sat.gob.mx",
+      "path": "/cs/CookieServer",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "f5avrbbbbbbbbbbbbbbbb",
+      "value": "HBILGJAKJNNDLFMNKCMHFJINBNNPEIHLJEFICLJDGBLOLKCBEFNFONBPBELINJCMIGPDLAIEMJNAHNDNCCBAPKJBOMMKBEECIMMLHFOOGJMCDPJJNFJLDLKEPGNNAPNA",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp/idff",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ZNPCQ003-32383200",
+      "value": "3248ae55",
+      "domain": ".sat.gob.mx",
+      "path": "/personas",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ZNPCQ003-33373700",
+      "value": "3248ae55",
+      "domain": ".sat.gob.mx",
+      "path": "/app/seg",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "ZNPCQ003-32383200",
+      "value": "3248ae55",
+      "domain": ".sat.gob.mx",
+      "path": "/satys",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "UrnNovellNidpClusterMemberId",
+      "value": "~03~02fbf~1B~1A~1B~7F~7Cu~07",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/nesp",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "UrnNovellNidpClusterMemberId",
+      "value": "~03~02fbf~1B~1A~1A~7Eu",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "JSESSIONID",
+      "value": "B4E7B98DD07918121B080407BC782915",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/nidp",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "JSESSIONID",
+      "value": "E53E0CDD4A54AF3BC9BDCBC87A03FF2B",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/nesp",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "JSESSIONID",
+      "value": "doHFHhsQWfM4iG9QeYip3TuyO34Q78JmH9GPhAWv7jWxkCB9GJKe!-116325041",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/cs",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "satfilter",
+      "value": "1462228413906",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/",
+      "expires": 1774656062.55699,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "JSESSIONID",
+      "value": "rmRKGxvu6FqBXtQ1uova4H9xot5s4piUlhnLymkoz0huB0S0Tii3!-87491423",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "Presentacion-Portal-Contribuyente9080-Sticky",
+      "value": "336869386.31267.0000",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/",
+      "expires": 1776235955.175328,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "F5-PROD-SIAT-LOGIN-443",
+      "value": "!S59EF/4TipRSbm8aL6Sk22cxfLxa34W+25tUt1B0XjH4stplYRb2t7FS+ctReNSNFofHzV1EwlnAjg==",
+      "domain": "login.siat.sat.gob.mx",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "IPCZQX03476e55fb",
+      "value": "0300da00bbfafed2613c243c3d04e2012595ac3a",
+      "domain": ".sat.gob.mx",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "F5-CONTENCION-WWWMAT-443",
+      "value": "!rPNrqNSfrMk/OQ4aL6Sk22cxfLxa30ZpTDm/35XHy3TQjNfSZAxfHcfj7DHQqvwsFg+rvSmhJceUaw4=",
+      "domain": "wwwmat.sat.gob.mx",
+      "path": "/",
+      "expires": 1774572210.185817,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

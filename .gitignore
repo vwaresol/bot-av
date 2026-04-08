@@ -1,0 +1,5 @@
+.dist/
+esign/
+node_modules/
+.env
+.codex
