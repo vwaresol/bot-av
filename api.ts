@@ -79,6 +79,7 @@ export enum CustomerCreditStatus {
   PAYMENT_IN_PROCESS = 'EN PROCESO DE PAGO',
   IN_PROCESS = 'EN PROCESO',
   VALIDATION_IN_PROCESS = 'EN PROCESO DE VALIDACION',
+  INCONSISTENTE_EN_CUENTA_CLABE_DECLARADA = 'INCONSISTENTE EN CUENTA CLABE DECLARADA'
 }
 
 export const updateBalanceStatus = async (balanceId: string, status: CustomerCreditStatus, userId: string): Promise<void> => {

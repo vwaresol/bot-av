@@ -34,12 +34,13 @@ export const readFileContent = async (filePath: string): Promise<string> => {
   return await readFile(filePath, 'utf-8');
 };
 /**
- * Logs an error to a file by saving only the RFC.
+ * Logs an error to a file with the RFC and the failure reason.
  * @param rfc - The RFC of the client.
- * @param errorMessage - The error message (not saved in the file).
+ * @param errorMessage - The error message to save in the file.
  */
 export const logError = async (rfc: string, errorMessage: string): Promise<void> => {
-  const logEntry = `${rfc}\n`;
+  const cleanErrorMessage = errorMessage.replace(/\s+/g, ' ').trim();
+  const logEntry = `${new Date().toISOString()} ${rfc} - ${cleanErrorMessage}\n`;
   try {
     await appendFile('error.log', logEntry, 'utf-8');
   } catch (logError) {

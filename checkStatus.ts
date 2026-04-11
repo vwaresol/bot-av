@@ -10,6 +10,12 @@ type BalanceStatusResult = {
   lastDate: string | null;
 };
 
+const postLoginReadyTimeoutMs = 90_000;
+const postLoginPollIntervalMs = 500;
+const submitReadyTimeoutMs = 30_000;
+const loginPageLoadTimeoutMs = 15_000;
+const postLoginChromeErrorGraceMs = 10_000;
+
 const statusMap: Record<string, CustomerCreditStatus> = {
   'SIN ESTADO': CustomerCreditStatus.NO_STATUS,
   'AUTORIZADA TOTAL': CustomerCreditStatus.AUTORIZADA_TOTAL,
@@ -27,6 +33,7 @@ const statusMap: Record<string, CustomerCreditStatus> = {
   'EN PROCESO DE PAGO': CustomerCreditStatus.PAYMENT_IN_PROCESS,
   'EN PROCESO': CustomerCreditStatus.IN_PROCESS,
   'EN PROCESO DE VALIDACION': CustomerCreditStatus.VALIDATION_IN_PROCESS,
+  'INCONSISTENTE EN CUENTA CLABE DECLARADA': CustomerCreditStatus.INCONSISTENTE_EN_CUENTA_CLABE_DECLARADA
 };
 
 function mapToCustomerCreditStatus(status: string): CustomerCreditStatus {
@@ -46,10 +53,8 @@ export const checkStatus = async (client: Client) => {
     });
     const loginPage = await openLoginPage(page);
     await login(loginPage, client);
-    await loginPage.waitForLoadState('domcontentloaded');
-    await loginPage.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]').waitFor({
-      state: 'visible',
-    });
+    await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
+    await ensurePostLoginPageIsValid(loginPage);
 
     for (const balance of client.balances) {
       await checkBalanceStatus(loginPage, balance);
@@ -68,7 +73,12 @@ const openLoginPage = async (page: Page): Promise<Page> => {
   const popupPromise = page.waitForEvent('popup');
   await humanClick(efirmaLink);
   const loginPage = await popupPromise;
-  await loginPage.waitForLoadState('domcontentloaded');
+  try {
+    await loginPage.waitForLoadState('domcontentloaded', { timeout: loginPageLoadTimeoutMs });
+  } catch (error) {
+    throw new Error(`No se pudo cargar la pantalla de login SAT: ${getErrorMessage(error)}`);
+  }
+  await ensureChromeErrorPageWasNotLoaded(loginPage, 'cargar pantalla de login SAT');
   return loginPage;
 };
 
@@ -83,19 +93,160 @@ const login = async (page: Page, client: Client) => {
 
   const certificatePath = resolve(`esign/${client.rfc}/certificado.cer`);
   await setFile(page, '#fileCertificate', certificatePath);
+  await ensureLoginFormHasNoError(page);
 
   const keyPath = resolve(`esign/${client.rfc}/llave.key`);
   await setFile(page, '#filePrivateKey', keyPath);
+  await ensureLoginFormHasNoError(page);
 
   const passwordPath = resolve(`esign/${client.rfc}/password.txt`);
   const privateKeyPassword = await readFirstLine(passwordPath);
   const privateKeyPasswordInput = page.locator('#privateKeyPassword');
   await privateKeyPasswordInput.waitFor({ state: 'visible' });
   await privateKeyPasswordInput.fill(privateKeyPassword);
+  await ensureLoginFormHasNoError(page);
 
   const submitButton = page.locator('#submit');
+  await ensureLoginCanProceed(page, submitButton);
   await humanClick(submitButton);
 };
+
+const ensureLoginCanProceed = async (page: Page, submitButton: Locator) => {
+  // Espera a que el botón Enviar se habilite o detecta el mensaje de error del formulario para abortar el cliente.
+  const deadline = Date.now() + submitReadyTimeoutMs;
+
+  while (Date.now() < deadline) {
+    await ensureLoginFormHasNoError(page);
+
+    if (await isLocatorEnabled(submitButton)) {
+      return;
+    }
+
+    await page.waitForTimeout(postLoginPollIntervalMs);
+  }
+
+  await ensureLoginFormHasNoError(page);
+
+  throw new Error('El boton Enviar no se habilito despues de 30 segundos.');
+};
+
+const ensureLoginFormHasNoError = async (page: Page): Promise<void> => {
+  const errorContainer = page.locator('xpath=//*[@id="divError"]').first();
+  const errorMessage = await getLoginErrorMessage(errorContainer);
+
+  if (errorMessage) {
+    throw new Error(`Error en login SAT: ${errorMessage}`);
+  }
+};
+
+const ensurePostLoginPageIsValid = async (page: Page) => {
+  // Tras enviar el login, espera a que cargue la vista válida o detecta la pantalla WHITE para abortar el cliente.
+  const requestTypeDropdown = page.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]');
+  const whiteHeader = page.locator('xpath=/html/body/h1').first();
+  const deadline = Date.now() + postLoginReadyTimeoutMs;
+  let chromeErrorFirstSeenAt: number | null = null;
+  let lastChromeError: string | null = null;
+
+  while (Date.now() < deadline) {
+    const chromeError = await getChromeErrorPageMessage(page);
+
+    if (chromeError) {
+      chromeErrorFirstSeenAt ??= Date.now();
+      lastChromeError = chromeError;
+
+      if (Date.now() - chromeErrorFirstSeenAt >= postLoginChromeErrorGraceMs) {
+        throw new Error(`Error de Chrome después del login SAT: ${chromeError}`);
+      }
+    } else {
+      chromeErrorFirstSeenAt = null;
+      lastChromeError = null;
+    }
+
+    if (await isWhiteHeaderVisible(whiteHeader)) {
+      throw new Error('Pantalla WHITE detectada después del login.');
+    }
+
+    if (await requestTypeDropdown.isVisible().catch(() => false)) {
+      return;
+    }
+
+    await page.waitForTimeout(postLoginPollIntervalMs);
+  }
+
+  if (lastChromeError) {
+    throw new Error(`Error de Chrome después del login SAT: ${lastChromeError}`);
+  }
+
+  if (await isWhiteHeaderVisible(whiteHeader)) {
+    throw new Error('Pantalla WHITE detectada después del login.');
+  }
+
+  await ensureChromeErrorPageWasNotLoaded(page, 'después del login SAT');
+  await requestTypeDropdown.waitFor({ state: 'visible', timeout: 1_000 });
+};
+
+const ensureChromeErrorPageWasNotLoaded = async (page: Page, context: string): Promise<void> => {
+  const chromeError = await getChromeErrorPageMessage(page);
+
+  if (chromeError) {
+    throw new Error(`Error de Chrome al ${context}: ${chromeError}`);
+  }
+};
+
+const getChromeErrorPageMessage = async (page: Page): Promise<string | null> => {
+  const url = page.url();
+  const title = normalizeText(await page.title().catch(() => ''));
+  const bodyText = normalizeText(await page.locator('body').innerText({ timeout: 1_000 }).catch(() => ''));
+  const errorCodeMatch = bodyText.match(/err_[a-z0-9_]+/i);
+  const hasChromeErrorUrl = url.startsWith('chrome-error://');
+  const isChromeErrorPage =
+    hasChromeErrorUrl ||
+    Boolean(errorCodeMatch) ||
+    title.includes('this site can') ||
+    bodyText.includes('this site can') ||
+    bodyText.includes('no se puede acceder a este sitio') ||
+    bodyText.includes('no se ha podido acceder a este sitio');
+
+  if (!isChromeErrorPage) {
+    return null;
+  }
+
+  const errorCode = errorCodeMatch?.[0].toUpperCase();
+
+  if (errorCode) {
+    return `${errorCode} (${url})`;
+  }
+
+  return `Se cargo una pagina de error del navegador. URL: ${url}. Titulo: ${title || 'sin titulo'}`;
+};
+
+const isWhiteHeaderVisible = async (header: Locator): Promise<boolean> => {
+  const isVisible = await header.isVisible().catch(() => false);
+
+  if (!isVisible) {
+    return false;
+  }
+
+  const headerText = normalizeText(await header.textContent());
+  return headerText.includes('whitelabel error page') || headerText === 'white';
+};
+
+const isLocatorEnabled = async (locator: Locator): Promise<boolean> =>
+  await locator.isEnabled().catch(() => false);
+
+const getLoginErrorMessage = async (errorContainer: Locator): Promise<string | null> => {
+  const isVisible = await errorContainer.isVisible().catch(() => false);
+
+  if (!isVisible) {
+    return null;
+  }
+
+  const errorText = (await errorContainer.textContent())?.replace(/\s+/g, ' ').trim();
+  return errorText || 'Se detecto un error en divError.';
+};
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 const checkBalanceStatus = async (page: Page, balance: Balance) => {
   // Selecciona tipo, año y estados disponibles para obtener el estado más reciente del saldo.

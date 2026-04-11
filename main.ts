@@ -52,7 +52,7 @@ const main = async () => {
         await logError(client.rfc, errorMessage);
         continue;
       }
-      break;
+      //break;
     }
 
     console.log(`${colors.green}Todas las verificaciones completadas.${colors.reset}`);
