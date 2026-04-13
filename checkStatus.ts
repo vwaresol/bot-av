@@ -10,6 +10,8 @@ type BalanceStatusResult = {
   lastDate: string | null;
 };
 
+type SatContext = Pick<Page, 'locator'>;
+
 const postLoginReadyTimeoutMs = 90_000;
 const postLoginPollIntervalMs = 500;
 const submitReadyTimeoutMs = 30_000;
@@ -55,9 +57,10 @@ export const checkStatus = async (client: Client) => {
     await login(loginPage, client);
     await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
     await ensurePostLoginPageIsValid(loginPage);
+    const satContext = await getSatContext(loginPage);
 
     for (const balance of client.balances) {
-      await checkBalanceStatus(loginPage, balance);
+      await checkBalanceStatus(satContext, balance);
     }
   } finally {
     await browser.close();
@@ -84,39 +87,51 @@ const openLoginPage = async (page: Page): Promise<Page> => {
 
 const login = async (page: Page, client: Client) => {
   // Carga certificados, captura la contraseña de la llave y envía el formulario de acceso.
-  const rfcInput = page.locator('#rfc');
+  const loginContext = await getSatContext(page);
+  const rfcInput = loginContext.locator('#rfc');
   await rfcInput.waitFor({ state: 'visible' });
-  const eFirmaLogin = page.locator('#buttonFiel');
+  const eFirmaLogin = loginContext.locator('#buttonFiel');
   await humanClick(eFirmaLogin);
-  await page.locator('#txtCertificate').waitFor({ state: 'visible' });
+  await loginContext.locator('#txtCertificate').waitFor({ state: 'visible' });
   await page.waitForTimeout(850);
 
   const certificatePath = resolve(`esign/${client.rfc}/certificado.cer`);
-  await setFile(page, '#fileCertificate', certificatePath);
-  await ensureLoginFormHasNoError(page);
+  await setFile(loginContext.locator('#fileCertificate').first(), certificatePath);
+  await ensureLoginFormHasNoError(loginContext);
 
   const keyPath = resolve(`esign/${client.rfc}/llave.key`);
-  await setFile(page, '#filePrivateKey', keyPath);
-  await ensureLoginFormHasNoError(page);
+  await setFile(loginContext.locator('#filePrivateKey').first(), keyPath);
+  await ensureLoginFormHasNoError(loginContext);
 
   const passwordPath = resolve(`esign/${client.rfc}/password.txt`);
   const privateKeyPassword = await readFirstLine(passwordPath);
-  const privateKeyPasswordInput = page.locator('#privateKeyPassword');
+  const privateKeyPasswordInput = loginContext.locator('#privateKeyPassword');
   await privateKeyPasswordInput.waitFor({ state: 'visible' });
   await privateKeyPasswordInput.fill(privateKeyPassword);
-  await ensureLoginFormHasNoError(page);
+  await ensureLoginFormHasNoError(loginContext);
 
-  const submitButton = page.locator('#submit');
-  await ensureLoginCanProceed(page, submitButton);
+  const submitButton = loginContext.locator('#submit');
+  await ensureLoginCanProceed(loginContext, submitButton, page);
   await humanClick(submitButton);
 };
 
-const ensureLoginCanProceed = async (page: Page, submitButton: Locator) => {
+const getSatContext = async (page: Page): Promise<SatContext> => {
+  const loginIframe = page.locator('#iframetoload').first();
+
+  if (await loginIframe.count()) {
+    await loginIframe.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined);
+    return page.frameLocator('#iframetoload');
+  }
+
+  return page;
+};
+
+const ensureLoginCanProceed = async (loginContext: SatContext, submitButton: Locator, page: Page) => {
   // Espera a que el botón Enviar se habilite o detecta el mensaje de error del formulario para abortar el cliente.
   const deadline = Date.now() + submitReadyTimeoutMs;
 
   while (Date.now() < deadline) {
-    await ensureLoginFormHasNoError(page);
+    await ensureLoginFormHasNoError(loginContext);
 
     if (await isLocatorEnabled(submitButton)) {
       return;
@@ -125,13 +140,13 @@ const ensureLoginCanProceed = async (page: Page, submitButton: Locator) => {
     await page.waitForTimeout(postLoginPollIntervalMs);
   }
 
-  await ensureLoginFormHasNoError(page);
+  await ensureLoginFormHasNoError(loginContext);
 
   throw new Error('El boton Enviar no se habilito despues de 30 segundos.');
 };
 
-const ensureLoginFormHasNoError = async (page: Page): Promise<void> => {
-  const errorContainer = page.locator('xpath=//*[@id="divError"]').first();
+const ensureLoginFormHasNoError = async (loginContext: SatContext): Promise<void> => {
+  const errorContainer = loginContext.locator('xpath=//*[@id="divError"]').first();
   const errorMessage = await getLoginErrorMessage(errorContainer);
 
   if (errorMessage) {
@@ -141,7 +156,8 @@ const ensureLoginFormHasNoError = async (page: Page): Promise<void> => {
 
 const ensurePostLoginPageIsValid = async (page: Page) => {
   // Tras enviar el login, espera a que cargue la vista válida o detecta la pantalla WHITE para abortar el cliente.
-  const requestTypeDropdown = page.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]');
+  const satContext = await getSatContext(page);
+  const requestTypeDropdown = satContext.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]');
   const whiteHeader = page.locator('xpath=/html/body/h1').first();
   const deadline = Date.now() + postLoginReadyTimeoutMs;
   let chromeErrorFirstSeenAt: number | null = null;
@@ -248,7 +264,7 @@ const getLoginErrorMessage = async (errorContainer: Locator): Promise<string | n
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-const checkBalanceStatus = async (page: Page, balance: Balance) => {
+const checkBalanceStatus = async (satContext: SatContext, balance: Balance) => {
   // Selecciona tipo, año y estados disponibles para obtener el estado más reciente del saldo.
   console.log(
     `\n\n${colors.green}Saldo ${balance.year ?? 'N/A'}\nEstado Actual : ${balance.balanceStatus}${colors.reset}`,
@@ -256,44 +272,44 @@ const checkBalanceStatus = async (page: Page, balance: Balance) => {
 
   const balanceType = balance.type?.toUpperCase();
 
-  const requestTypeDropdown = page.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]');
+  const requestTypeDropdown = satContext.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId"]');
   await requestTypeDropdown.waitFor({ state: 'visible' });
   await requestTypeDropdown.scrollIntoViewIfNeeded();
-  await page.waitForTimeout(850);
+  await requestTypeDropdown.page().waitForTimeout(850);
   await humanClick(requestTypeDropdown);
-  await waitForPageLoading(page);
+  await waitForPageLoading(satContext);
 
-  const requestTypePanel = page.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId_panel"]');
+  const requestTypePanel = satContext.locator('xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId_panel"]');
   await requestTypePanel.waitFor({ state: 'visible' });
 
   console.log({balanceType})
   if (balanceType === 'MANUAL') {
-    const manualOption = page.locator(
+    const manualOption = satContext.locator(
       'xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId_panel"]/div/ul/li[4]',
     );
     await humanClick(manualOption);
-    await waitForPageLoading(page);
+    await waitForPageLoading(satContext);
   }
 
   if (balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA') {
-    const automaticOption = page.locator(
+    const automaticOption = satContext.locator(
       'xpath=//*[@id="idConsultaDevautisr:tipoSolicitudId_panel"]/div/ul/li[6]',
     );
     await humanClick(automaticOption);
-    await waitForPageLoading(page);
+    await waitForPageLoading(satContext);
   } else if (balanceType !== 'MANUAL') {
     throw new Error(`Tipo de saldo no soportado: ${balance.type}`);
   }
 
-  const yearDropdown = page.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId"]');
+  const yearDropdown = satContext.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId"]');
   await yearDropdown.waitFor({ state: 'visible' });
   await humanClick(yearDropdown);
-  await waitForPageLoading(page);
+  await waitForPageLoading(satContext);
 
-  const yearPanel = page.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId_panel"]/div');
+  const yearPanel = satContext.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId_panel"]/div');
   await yearPanel.waitFor({ state: 'visible' });
 
-  const yearOptions = page.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId_panel"]/div/ul/li');
+  const yearOptions = satContext.locator('xpath=//*[@id="idConsultaDevautisr:ejercicioId_panel"]/div/ul/li');
   await yearOptions.first().waitFor({ state: 'visible' });
   const yearOptionCount = await yearOptions.count();
   const balanceYear = String(balance.year ?? '').trim();
@@ -306,8 +322,8 @@ const checkBalanceStatus = async (page: Page, balance: Balance) => {
       await option.scrollIntoViewIfNeeded();
       await option.waitFor({ state: 'visible' });
       await humanClick(option);
-      await waitForPageLoading(page);
-      const availableStatuses = await getAvailableBalanceStatuses(page, balanceType);
+      await waitForPageLoading(satContext);
+      const availableStatuses = await getAvailableBalanceStatuses(satContext, balanceType);
       // console.log(
       //   `${colors.blue}Estados disponibles para ${balanceYear}: ${availableStatuses.join(', ')}${colors.reset}`,
       // );
@@ -324,7 +340,7 @@ const checkBalanceStatus = async (page: Page, balance: Balance) => {
           continue;
         }
 
-        const result = await searchStatusAndExtractLastDate(page, status, balanceType);
+        const result = await searchStatusAndExtractLastDate(satContext, status, balanceType);
         statusResults.push(result);
         // console.log(
         //   `${colors.green}${JSON.stringify(result)}${colors.reset}`,
@@ -350,15 +366,15 @@ const checkBalanceStatus = async (page: Page, balance: Balance) => {
   throw new Error(`No se encontró la opción del año ${balanceYear} en el dropdown.`);
 };
 
-const getAvailableBalanceStatuses = async (page: Page, balanceType: string): Promise<string[]> => {
+const getAvailableBalanceStatuses = async (satContext: SatContext, balanceType: string): Promise<string[]> => {
   // Lee las opciones del combo de estados y traduce el placeholder a SIN ESTADO cuando aplica.
   const dropdownId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'mostrarSolicitudId' : 'mostrarSolicitudIdEdosComps';
-  const statusDropdown = page.locator(
+  const statusDropdown = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${dropdownId}"]`,
   );
   await statusDropdown.waitFor({ state: 'visible' });
 
-  const statusOptions = await openStatusDropdownAndReadOptions(page, balanceType);
+  const statusOptions = await openStatusDropdownAndReadOptions(satContext, balanceType);
   const normalizedStatuses = statusOptions.filter((status) => status !== 'Seleccione');
 
   if (normalizedStatuses.length === 0) {
@@ -368,50 +384,50 @@ const getAvailableBalanceStatuses = async (page: Page, balanceType: string): Pro
   return normalizedStatuses;
 };
 
-const selectBalanceStatus = async (page: Page, status: string, balanceType: string) => {
+const selectBalanceStatus = async (satContext: SatContext, status: string, balanceType: string) => {
   // Abre el combo de estados y deja seleccionado el valor solicitado.
   const dropdownId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'mostrarSolicitudId' : 'mostrarSolicitudIdEdosComps';
-  const statusDropdown = page.locator(
+  const statusDropdown = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${dropdownId}"]`,
   );
   await statusDropdown.waitFor({ state: 'visible' });
   await humanClick(statusDropdown);
 
   const panelId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'mostrarSolicitudId_panel' : 'mostrarSolicitudIdEdosComps_panel';
-  const statusPanel = page.locator(
+  const statusPanel = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${panelId}"]/div/ul`,
   );
   await statusPanel.waitFor({ state: 'visible' });
 
-  const statusOption = page.locator(
+  const statusOption = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${panelId}"]/div/ul/li[@data-label=${toXPathLiteral(status)}]`,
   );
   await statusOption.waitFor({ state: 'visible' });
   await humanClick(statusOption);
-  await waitForPageLoading(page);
+  await waitForPageLoading(satContext);
 };
 
 const searchStatusAndExtractLastDate = async (
-  page: Page,
+  satContext: SatContext,
   status: string,
   balanceType: string,
 ): Promise<BalanceStatusResult> => {
   // Ejecuta la búsqueda para un estado específico y devuelve su fecha de presentación más reciente.
-  await selectBalanceStatus(page, status, balanceType);
-  const searchButton = page.locator('xpath=//*[@id="idConsultaDevautisr:btnBuscar"]');
+  await selectBalanceStatus(satContext, status, balanceType);
+  const searchButton = satContext.locator('xpath=//*[@id="idConsultaDevautisr:btnBuscar"]');
   await searchButton.waitFor({ state: 'visible' });
   await humanClick(searchButton);
-  await waitForPageLoading(page);
+  await waitForPageLoading(satContext);
 
-  const resultsTable = await findResultsTable(page, balanceType);
+  const resultsTable = await findResultsTable(satContext, balanceType);
   const lastDate = await extractLatestPresentationDate(resultsTable, balanceType);
   return { status, lastDate };
 };
 
-const findResultsTable = async (page: Page, balanceType: string): Promise<Locator> => {
+const findResultsTable = async (satContext: SatContext, balanceType: string): Promise<Locator> => {
   // Ubica la tabla fija de resultados renderizada después de presionar BUSCAR.
   const tableId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'dtlDocumentosIsr' : 'dtlDocumentos';
-  const resultsTable = page.locator(`xpath=//*[@id="idConsultaDevautisr:${tableId}"]`);
+  const resultsTable = satContext.locator(`xpath=//*[@id="idConsultaDevautisr:${tableId}"]`);
   await resultsTable.waitFor({ state: 'visible' });
 
   const headerId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'dtlDocumentosIsr_head' : 'dtlDocumentos_head';
@@ -481,17 +497,17 @@ const extractLatestPresentationDate = async (table: Locator, balanceType: string
   return latestDateText;
 };
 
-const openStatusDropdownAndReadOptions = async (page: Page, balanceType: string): Promise<string[]> => {
+const openStatusDropdownAndReadOptions = async (satContext: SatContext, balanceType: string): Promise<string[]> => {
   // Abre el dropdown de estados, captura sus textos visibles y luego lo cierra.
   const dropdownId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'mostrarSolicitudId' : 'mostrarSolicitudIdEdosComps';
-  const statusDropdown = page.locator(
+  const statusDropdown = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${dropdownId}"]`,
   );
   const panelId = balanceType === 'AUTOMATICA' || balanceType === 'AUTOMÁTICA' ? 'mostrarSolicitudId_panel' : 'mostrarSolicitudIdEdosComps_panel';
-  const statusPanel = page.locator(
+  const statusPanel = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${panelId}"]/div/ul`,
   );
-  const statusOptions = page.locator(
+  const statusOptions = satContext.locator(
     `xpath=//*[@id="idConsultaDevautisr:${panelId}"]/div/ul/li`,
   );
 
@@ -609,9 +625,9 @@ const humanClick = async (locator: Locator) => {
   await locator.click({ delay: 80 + Math.floor(Math.random() * 120) });
 };
 
-const waitForPageLoading = async (page: Page) => {
+const waitForPageLoading = async (satContext: SatContext) => {
   // Espera el overlay de carga de la vista cuando aparece después de una acción AJAX.
-  const loadingOverlay = page.locator('xpath=//*[@id="j_idt9"]').first();
+  const loadingOverlay = satContext.locator('xpath=//*[@id="j_idt9"]').first();
 
   try {
     await loadingOverlay.waitFor({ state: 'visible', timeout: 2000 });
@@ -622,25 +638,24 @@ const waitForPageLoading = async (page: Page) => {
   }
 };
 
-const setFile = async (page: Page, selector: string, filePath: string) => {
+const setFile = async (input: Locator, filePath: string) => {
   // Sube un archivo a un input y valida que el nombre haya quedado cargado en el DOM.
-  const input = page.locator(selector).first();
   await input.waitFor({ state: 'attached' });
-  await page.waitForTimeout(425);
+  await input.page().waitForTimeout(425);
   await input.setInputFiles(filePath);
-  await expectInputFile(page, selector, filePath);
-  await page.waitForTimeout(425);
+  await expectInputFile(input, filePath);
+  await input.page().waitForTimeout(425);
 };
 
-const expectInputFile = async (page: Page, selector: string, filePath: string) => {
+const expectInputFile = async (input: Locator, filePath: string) => {
   // Verifica que el input contenga exactamente el archivo esperado antes de continuar.
   const expectedFileName = filePath.split('/').pop() ?? filePath;
 
-  await page.waitForFunction(
-    ([inputSelector, expectedName]) => {
-      const inputElement = document.querySelector(inputSelector) as HTMLInputElement | null;
-      return inputElement?.files?.[0]?.name === expectedName;
-    },
-    [selector, expectedFileName],
+  const uploadedFileName = await input.evaluate((inputElement) =>
+    (inputElement as HTMLInputElement).files?.[0]?.name ?? null,
   );
+
+  if (uploadedFileName !== expectedFileName) {
+    throw new Error(`No se pudo validar la carga del archivo ${expectedFileName}.`);
+  }
 };
