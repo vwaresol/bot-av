@@ -3,6 +3,7 @@ import { chromium, type Locator, type Page } from 'playwright';
 import { resolve } from 'node:path';
 import { Client, type Document, type Balance, updateBalanceStatus, CustomerCreditStatus } from './api';
 import { colors, satPaths } from './constants';
+import { solveBase64Captcha } from './twoCaptcha.js';
 import { readFirstLine } from './utils';
 
 type BalanceStatusResult = {
@@ -53,10 +54,25 @@ export const checkStatus = async (client: Client) => {
     await page.goto(satPaths.start, {
       waitUntil: 'domcontentloaded'
     });
-    const loginPage = await openLoginPage(page);
-    await login(loginPage, client);
-    await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
-    await ensurePostLoginPageIsValid(loginPage);
+    const loginPage = await openLoginPage(page, client);
+    const usesPasswordLogin = clientUsesPassword(client);
+
+    if (usesPasswordLogin) {
+      console.log('Iniciando sesion con contraseña');
+      try {
+        await LoginWithPassword(loginPage, client);
+        await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
+        await ensurePostLoginPageIsValid(loginPage);
+      } catch (error) {
+        throw new Error(`Error de captcha en login SAT: ${getErrorMessage(error)}`);
+      }
+    } else {
+      console.log('Iniciando sesion con certificados');
+      await login(loginPage, client);
+      await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
+      await ensurePostLoginPageIsValid(loginPage);
+    }
+
     const satContext = await getSatContext(loginPage);
 
     for (const balance of client.balances) {
@@ -67,10 +83,15 @@ export const checkStatus = async (client: Client) => {
   }
 };
 
-const openLoginPage = async (page: Page): Promise<Page> => {
-  // Navega desde la página inicial hasta la ventana emergente del login con e.firma.
+const openLoginPage = async (page: Page, client: Client): Promise<Page> => {
+  // Navega desde la página inicial hasta la opción de login correspondiente para el cliente.
   const verificationCard = page.locator('xpath=/html/body/div/main/div[2]/section/div/div[3]');
   await humanClick(verificationCard);
+
+  if (clientUsesPassword(client)) {
+    return page;
+  }
+
 
   const efirmaLink = page.locator('xpath=//*[@id="body"]/div/main/div[2]/section/div[2]/div/div[1]/div[2]/p/ol/li[1]/a[1]');
   const popupPromise = page.waitForEvent('popup');
@@ -113,6 +134,63 @@ const login = async (page: Page, client: Client) => {
   const submitButton = loginContext.locator('#submit');
   await ensureLoginCanProceed(loginContext, submitButton, page);
   await humanClick(submitButton);
+};
+
+const LoginWithPassword = async (page: Page, client: Client) => {
+  // Captura RFC, contraseña y captcha del cliente antes de enviar el formulario.
+  if (!client.password) {
+    throw new Error(`El cliente ${client.rfc} no tiene password configurado para login SAT.`);
+  }
+
+  const loginContext = await getSatContext(page);
+  const rfcInput = loginContext.locator('#rfc');
+  await rfcInput.waitFor({ state: 'visible' });
+  await rfcInput.fill(client.rfc);
+  await ensureLoginFormHasNoError(loginContext);
+
+  const passwordInput = loginContext.locator('#password');
+  await passwordInput.waitFor({ state: 'visible' });
+  await passwordInput.fill(client.password);
+  await ensureLoginFormHasNoError(loginContext);
+
+  const captchaText = await solveLoginCaptcha(loginContext);
+  const captchaInput = loginContext.locator('#userCaptcha');
+  await captchaInput.waitFor({ state: 'visible' });
+  await captchaInput.fill(captchaText);
+  await ensureLoginFormHasNoError(loginContext);
+
+  const submitButton = loginContext.locator('#submit');
+  await ensureLoginCanProceed(loginContext, submitButton, page);
+  await humanClick(submitButton);
+};
+
+const clientUsesPassword = (client: Client): boolean =>
+  (client.method ?? []).some((method) => {
+    const normalizedMethod = normalizeText(method);
+    return normalizedMethod.includes('password') || normalizedMethod.includes('contrasena');
+  });
+
+const solveLoginCaptcha = async (loginContext: SatContext): Promise<string> => {
+  try {
+    const captchaImage = loginContext.locator('#divCaptcha img').first();
+    await captchaImage.waitFor({ state: 'visible' });
+
+    const captchaSrc = await captchaImage.getAttribute('src');
+
+    if (!captchaSrc) {
+      throw new Error('No se encontró la imagen del captcha de login SAT.');
+    }
+
+    const solvedCaptcha = await solveBase64Captcha(captchaSrc, {
+      caseSensitive: 1,
+      minLen: 4,
+      maxLen: 16,
+    });
+
+    return solvedCaptcha.text.trim().toUpperCase();
+  } catch (error) {
+    throw new Error(`No se pudo resolver el captcha SAT: ${getErrorMessage(error)}`);
+  }
 };
 
 const getSatContext = async (page: Page): Promise<SatContext> => {

@@ -8,6 +8,8 @@ export interface Client {
   id: string;
   rfc: string;
   name: string;
+  method?: string[];
+  password?: string | null;
   documents: Document[];
   balances: Balance[];
 }
