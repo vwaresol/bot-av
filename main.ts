@@ -34,7 +34,7 @@ const main = async () => {
       const client = clients[i];
       console.log(`${colors.blue}Verificando cliente ${i + 1} de ${totalClients}${colors.reset}`);
       const clientReviewStart = Date.now();
-      //const client = await fetchClient('4c658b5f-1348-4132-97d7-de36386974cd') as Client;
+      //const client = await fetchClient('ffb30966-b9b2-4da7-90eb-3ec3655d5570') as Client;
       console.log(`${colors.yellow}\nVerificando RFC: ${client.rfc} - (ID: ${client.id})${colors.reset}`);
       // Delay entre verificaciones
       await new Promise(resolve => setTimeout(resolve, timeBetweenChecks));
@@ -52,6 +52,7 @@ const main = async () => {
         await logError(client.rfc, errorMessage);
         continue;
       }
+      //break;
     }
 
     console.log(`${colors.green}Todas las verificaciones completadas.${colors.reset}`);

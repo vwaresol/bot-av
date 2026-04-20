@@ -54,7 +54,7 @@ export const checkStatus = async (client: Client) => {
     await page.goto(satPaths.start, {
       waitUntil: 'domcontentloaded'
     });
-    const loginPage = await openLoginPage(page, client);
+    const loginPage = await openLoginPage(page);
     const usesPasswordLogin = clientUsesPassword(client);
 
     if (usesPasswordLogin) {
@@ -83,15 +83,10 @@ export const checkStatus = async (client: Client) => {
   }
 };
 
-const openLoginPage = async (page: Page, client: Client): Promise<Page> => {
+const openLoginPage = async (page: Page): Promise<Page> => {
   // Navega desde la página inicial hasta la opción de login correspondiente para el cliente.
   const verificationCard = page.locator('xpath=/html/body/div/main/div[2]/section/div/div[3]');
   await humanClick(verificationCard);
-
-  if (clientUsesPassword(client)) {
-    return page;
-  }
-
 
   const efirmaLink = page.locator('xpath=//*[@id="body"]/div/main/div[2]/section/div[2]/div/div[1]/div[2]/p/ol/li[1]/a[1]');
   const popupPromise = page.waitForEvent('popup');
