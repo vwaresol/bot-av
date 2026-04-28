@@ -3,3 +3,4 @@ esign/
 node_modules/
 .env
 .codex
+LOGS/
