@@ -37,10 +37,10 @@ const main = async (scriptStart: Date) => {
     totalClients = clients.length;
 
     for (let i = 0; i < totalClients; i++) {
-      //const client = clients[i];
+      const client = clients[i];
       console.log(`${colors.blue}Verificando cliente ${i + 1} de ${totalClients}${colors.reset}`);
       const clientReviewStart = Date.now();
-      const client = await fetchClient('ffb30966-b9b2-4da7-90eb-3ec3655d5570') as Client;
+      //const client = await fetchClient('ffb30966-b9b2-4da7-90eb-3ec3655d5570') as Client;
       console.log(`${colors.yellow}\nVerificando RFC: ${client.rfc} - (ID: ${client.id})${colors.reset}`);
       // Delay entre verificaciones
       await new Promise(resolve => setTimeout(resolve, timeBetweenChecks));
