@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { colors } from './constants.js';
 import { fetchFileFromCDN } from './api.js';
 import type { Client } from './api.js';
@@ -8,8 +8,7 @@ export const prepareFiles = async (client: Client): Promise<void> => {
   const eSignDoc = client.documents.find(doc => doc.type === 'eSign');
   
   if (!eSignDoc) {
-    console.log(`${colors.yellow}No se encontró documento eSign para cliente ${client.rfc}${colors.reset}`);
-    return;
+    throw new Error(`Faltan archivos de eFirma para cliente ${client.rfc}: .cer, .key, .contraseña`);
   }
 
   try {
@@ -22,6 +21,7 @@ export const prepareFiles = async (client: Client): Promise<void> => {
     
     // Extraer archivos del ZIP
     await extractAndSaveFiles(zipBuffer, dirPath);
+    await validateRequiredFiles(dirPath);
     
     console.log(`${colors.blue}Archivos extraídos y guardados en: ${dirPath}${colors.reset}`);
   } catch (error) {
@@ -75,4 +75,25 @@ const extractAndSaveFiles = async (zipBuffer: Buffer, destDir: string): Promise<
         }
       });
   });
+};
+
+const validateRequiredFiles = async (dirPath: string): Promise<void> => {
+  const requiredFiles = [
+    { path: `${dirPath}/certificado.cer`, label: '.cer' },
+    { path: `${dirPath}/llave.key`, label: '.key' },
+    { path: `${dirPath}/password.txt`, label: '.contraseña' },
+  ];
+  const missingFiles: string[] = [];
+
+  for (const file of requiredFiles) {
+    try {
+      await access(file.path);
+    } catch {
+      missingFiles.push(file.label);
+    }
+  }
+
+  if (missingFiles.length > 0) {
+    throw new Error(`Faltan archivos de eFirma: ${missingFiles.join(', ')}`);
+  }
 };

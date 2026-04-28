@@ -64,7 +64,11 @@ export const checkStatus = async (client: Client) => {
         await loginPage.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
         await ensurePostLoginPageIsValid(loginPage);
       } catch (error) {
-        throw new Error(`Error de captcha en login SAT: ${getErrorMessage(error)}`);
+        const errorMessage = getErrorMessage(error);
+        if (normalizeText(errorMessage).includes('captcha')) {
+          throw new Error(`Error de captcha en login SAT: ${errorMessage}`);
+        }
+        throw new Error(`Error de login con contraseña SAT: ${errorMessage}`);
       }
     } else {
       console.log('Iniciando sesion con certificados');

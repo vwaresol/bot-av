@@ -3,7 +3,7 @@ import { checkStatus } from './checkStatus.js';
 import { colors } from './constants.js';
 import { Client, fetchClients, fetchClient } from './api.js';
 import { prepareFiles } from './documents.js';
-import { logError } from './utils.js';
+import { ensureLogDirectory, logError, logSummary } from './utils.js';
 
 const timeBetweenChecks = parseInt(process.env.TIME_BETWEEN_CHECKS_MS || '1250', 10);
 
@@ -22,13 +22,19 @@ const validateEnvironment = () => {
   }
 };
 
-const main = async () => {
-  validateEnvironment();
+const main = async (scriptStart: Date) => {
+  let successfulClients = 0;
+  let failedClients = 0;
+  let totalClients = 0;
+  let fatalError: unknown = null;
+
   try {
+    await ensureLogDirectory(scriptStart);
+    validateEnvironment();
     console.log(`${colors.blue}Obteniendo lista de clientes...${colors.reset}`);
     const clients = await fetchClients() as Client[];
     console.log(`${colors.green}Encontrados ${clients.length} clientes.${colors.reset}`);
-    const totalClients = clients.length;
+    totalClients = clients.length;
 
     for (let i = 0; i < totalClients; i++) {
       const client = clients[i];
@@ -46,10 +52,12 @@ const main = async () => {
           `${colors.blue}Tiempo total de revisión: ${clientReviewDuration}${colors.reset}`,
         );
         console.log(`${colors.green}Verificación completada \n${colors.reset}`);
+        successfulClients += 1;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.log(`${colors.red}Error para cliente ${client.rfc}: ${errorMessage}${colors.reset}`);
-        await logError(client.rfc, errorMessage);
+        failedClients += 1;
+        await logError(client, errorMessage, scriptStart);
         continue;
       }
       //break;
@@ -57,7 +65,24 @@ const main = async () => {
 
     console.log(`${colors.green}Todas las verificaciones completadas.${colors.reset}`);
   } catch (error) {
+    fatalError = error;
     console.error(`${colors.red}Error en el proceso principal:${colors.reset}`, error);
+  } finally {
+    const scriptEnd = new Date();
+    await logSummary(
+      {
+        successfulClients,
+        failedClients,
+        totalClients,
+        startDate: scriptStart,
+        endDate: scriptEnd,
+        durationMs: scriptEnd.getTime() - scriptStart.getTime(),
+      },
+      scriptStart,
+    );
+  }
+
+  if (fatalError) {
     process.exit(1);
   }
 };
@@ -74,8 +99,8 @@ const formatDuration = (durationMs: number): string => {
 };
 
 (async () => {
-  const scriptStart = Date.now();
-  await main();
-  const scriptDuration = Date.now() - scriptStart;
+  const scriptStart = new Date();
+  await main(scriptStart);
+  const scriptDuration = Date.now() - scriptStart.getTime();
   console.log(`${colors.green}Tiempo total del script: ${formatDuration(scriptDuration)}${colors.reset}`);
 })();
