@@ -62,7 +62,8 @@ export const readFileContent = async (filePath: string): Promise<string> => {
 
 export const getLogDirectory = (date = new Date()): string => {
   const dateFolder = formatDateFolder(date);
-  return join('LOGS', dateFolder);
+  const runFolder = formatRunFolder(date);
+  return join('LOGS', dateFolder, runFolder);
 };
 
 export const ensureLogDirectory = async (date = new Date()): Promise<string> => {
@@ -289,6 +290,14 @@ const formatDateFolder = (date: Date): string => {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const formatRunFolder = (date: Date): string => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+  return `${hours}-${minutes}-${seconds}-${milliseconds}-pid-${process.pid}`;
 };
 
 const formatDateTime = (date: Date): string => {
