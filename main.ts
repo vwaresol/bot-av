@@ -3,7 +3,7 @@ import { checkStatus } from './checkStatus.js';
 import { colors } from './constants.js';
 import { Client, fetchClients, fetchClient } from './api.js';
 import { prepareFiles } from './documents.js';
-import { ensureLogDirectory, logError, logSummary } from './utils.js';
+import { ensureLogDirectory, flushHistoryLogger, installHistoryLogger, logError, logSummary } from './utils.js';
 
 const timeBetweenChecks = parseInt(process.env.TIME_BETWEEN_CHECKS_MS || '1250', 10);
 
@@ -83,7 +83,7 @@ const main = async (scriptStart: Date) => {
   }
 
   if (fatalError) {
-    process.exit(1);
+    process.exitCode = 1;
   }
 };
 
@@ -100,7 +100,9 @@ const formatDuration = (durationMs: number): string => {
 
 (async () => {
   const scriptStart = new Date();
+  await installHistoryLogger(scriptStart);
   await main(scriptStart);
   const scriptDuration = Date.now() - scriptStart.getTime();
   console.log(`${colors.green}Tiempo total del script: ${formatDuration(scriptDuration)}${colors.reset}`);
+  await flushHistoryLogger();
 })();

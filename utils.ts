@@ -1,5 +1,6 @@
 import { readFile, appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { format } from 'node:util';
 import type { Client } from './api.js';
 
 type LogType = 'files' | 'efirmaLogin' | 'passwordLogin' | 'sat';
@@ -20,7 +21,10 @@ const logFileByType: Record<LogType, string> = {
   sat: 'Error_sat.log',
 };
 
-const logFileNames = [...Object.values(logFileByType), 'resumen.log'];
+const historyLogFileName = 'history.log';
+const logFileNames = [...Object.values(logFileByType), 'resumen.log', historyLogFileName];
+let historyLoggerInstalled = false;
+let historyLogQueue: Promise<void> = Promise.resolve();
 
 /**
  * Normalizes a WSL path by converting Windows-style paths to Unix-style.
@@ -66,6 +70,52 @@ export const ensureLogDirectory = async (date = new Date()): Promise<string> => 
   await mkdir(logDirectory, { recursive: true });
   await Promise.all(logFileNames.map((fileName) => appendFile(join(logDirectory, fileName), '', 'utf-8')));
   return logDirectory;
+};
+
+export const installHistoryLogger = async (runDate = new Date()): Promise<void> => {
+  if (historyLoggerInstalled) {
+    return;
+  }
+
+  const logDirectory = await ensureLogDirectory(runDate);
+  historyLoggerInstalled = true;
+  const originalConsole = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+  };
+
+  const writeHistoryEntry = (level: 'LOG' | 'WARN' | 'ERROR', args: unknown[]): void => {
+    const message = stripAnsiCodes(format(...args));
+    const logEntry = `[${formatDateTime(new Date())}] [${level}] ${message}\n`;
+
+    historyLogQueue = historyLogQueue
+      .then(async () => {
+        await appendFile(join(logDirectory, historyLogFileName), logEntry, 'utf-8');
+      })
+      .catch((logError) => {
+        originalConsole.error('Error al escribir en history.log:', logError);
+      });
+  };
+
+  console.log = (...args: unknown[]) => {
+    originalConsole.log(...args);
+    writeHistoryEntry('LOG', args);
+  };
+
+  console.warn = (...args: unknown[]) => {
+    originalConsole.warn(...args);
+    writeHistoryEntry('WARN', args);
+  };
+
+  console.error = (...args: unknown[]) => {
+    originalConsole.error(...args);
+    writeHistoryEntry('ERROR', args);
+  };
+};
+
+export const flushHistoryLogger = async (): Promise<void> => {
+  await historyLogQueue;
 };
 
 /**
@@ -224,6 +274,9 @@ const clientUsesPassword = (client: Client): boolean =>
   });
 
 const cleanLogText = (value: string): string => value.replace(/\s+/g, ' ').trim();
+
+const stripAnsiCodes = (value: string): string =>
+  value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 
 const normalizeForMatching = (value: string): string =>
   cleanLogText(value)
