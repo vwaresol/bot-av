@@ -1,7 +1,7 @@
 import { readFile, appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { format } from 'node:util';
-import type { Client } from './api.js';
+import { ErrorTypeEnum, type Client } from './api.js';
 
 type LogType = 'files' | 'efirmaLogin' | 'passwordLogin' | 'sat';
 
@@ -19,6 +19,13 @@ const logFileByType: Record<LogType, string> = {
   efirmaLogin: 'Error_login_efirma.log',
   passwordLogin: 'Error_login_contrasena.log',
   sat: 'Error_sat.log',
+};
+
+const errorTypeByLogType: Record<LogType, ErrorTypeEnum> = {
+  files: ErrorTypeEnum.ARCHIVOS,
+  efirmaLogin: ErrorTypeEnum.LOGIN_EFIRMA,
+  passwordLogin: ErrorTypeEnum.LOGIN_CONTRASEÑA,
+  sat: ErrorTypeEnum.SAT,
 };
 
 const historyLogFileName = 'history.log';
@@ -125,9 +132,8 @@ export const flushHistoryLogger = async (): Promise<void> => {
  * @param errorMessage - The error message to save in the file.
  */
 export const logError = async (client: Client, errorMessage: string, runDate = new Date()): Promise<void> => {
-  const cleanErrorMessage = cleanLogText(errorMessage);
-  const logType = classifyError(cleanErrorMessage, client);
-  const logEntry = `${client.rfc} - ${formatLogReason(logType, cleanErrorMessage)}\n`;
+  const { logType, description } = getClientErrorLogDetails(client, errorMessage);
+  const logEntry = `${client.rfc} - ${description}\n`;
 
   try {
     const logDirectory = await ensureLogDirectory(runDate);
@@ -135,6 +141,20 @@ export const logError = async (client: Client, errorMessage: string, runDate = n
   } catch (logError) {
     console.error('Error al escribir en el log:', logError);
   }
+};
+
+export const getClientErrorLogDetails = (
+  client: Client,
+  errorMessage: string,
+): { logType: LogType; errorType: ErrorTypeEnum; description: string } => {
+  const cleanErrorMessage = cleanLogText(errorMessage);
+  const logType = classifyError(cleanErrorMessage, client);
+
+  return {
+    logType,
+    errorType: errorTypeByLogType[logType],
+    description: formatLogReason(logType, cleanErrorMessage),
+  };
 };
 
 export const logSummary = async (summary: ScriptSummary, runDate = summary.startDate): Promise<void> => {

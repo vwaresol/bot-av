@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { checkStatus } from './checkStatus.js';
 import { colors } from './constants.js';
-import { Client, fetchClients, fetchClient } from './api.js';
+import { Client, createLogsForClientError, fetchClients, fetchClient } from './api.js';
 import { prepareFiles } from './documents.js';
-import { ensureLogDirectory, flushHistoryLogger, installHistoryLogger, logError, logSummary } from './utils.js';
+import { ensureLogDirectory, flushHistoryLogger, getClientErrorLogDetails, installHistoryLogger, logError, logSummary } from './utils.js';
 
 const timeBetweenChecks = parseInt(process.env.TIME_BETWEEN_CHECKS_MS || '1250', 10);
 
@@ -55,9 +55,11 @@ const main = async (scriptStart: Date) => {
         successfulClients += 1;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorLogDetails = getClientErrorLogDetails(client, errorMessage);
         console.log(`${colors.red}Error para cliente ${client.rfc}: ${errorMessage}${colors.reset}`);
         failedClients += 1;
         await logError(client, errorMessage, scriptStart);
+        await createLogsForClientError(client, errorLogDetails.errorType, errorLogDetails.description);
         continue;
       }
       //break;

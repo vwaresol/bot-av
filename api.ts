@@ -29,6 +29,26 @@ export interface Balance {
   type: string;
 }
 
+export enum CustomerReturnTypeOptions {
+  MANUAL = 'MANUAL',
+  AUTOMATICA = 'AUTOMÁTICA',
+}
+
+export enum ErrorTypeEnum {
+  ARCHIVOS = 'ARCHIVOS',
+  LOGIN_EFIRMA = 'LOGIN EFIRMA',
+  LOGIN_CONTRASEÑA = 'LOGIN CONTRASEÑA',
+  SAT = 'SAT',
+}
+
+type CreateLogPayload = {
+  returnType: CustomerReturnTypeOptions;
+  errorType: ErrorTypeEnum;
+  customerId: string;
+  balanceId: string;
+  description: string;
+};
+
 export const fetchClients = async (): Promise<Client[]> => {
   const url = `${apiUrl}/customer/to-process/balances-esign`;
   console.log(`${colors.blue}Obteniendo clientes desde '${url}' ...${colors.reset}`);
@@ -62,6 +82,63 @@ export const fetchFileFromCDN = async (name: string): Promise<Buffer> => {
   }
   const arrayBuffer = await response.arrayBuffer();
   return Buffer.from(arrayBuffer);
+};
+
+export const createLogsForClientError = async (
+  client: Client,
+  errorType: ErrorTypeEnum,
+  description: string,
+): Promise<void> => {
+  if (!client.balances.length) {
+    console.warn(`${colors.yellow}No se registró log remoto para ${client.rfc}: el cliente no tiene saldos.${colors.reset}`);
+    return;
+  }
+
+  for (const balance of client.balances) {
+    try {
+      await createLog({
+        customerId: client.id,
+        balanceId: balance.id,
+        returnType: getBalanceReturnType(balance),
+        errorType,
+        description,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(
+        `${colors.red}Error registrando log remoto para ${client.rfc} / saldo ${balance.id}: ${errorMessage}${colors.reset}`,
+      );
+    }
+  }
+};
+
+const createLog = async (payload: CreateLogPayload): Promise<void> => {
+  const url = `${apiUrl}/logs`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const responseBody = await response.text().catch(() => '');
+    throw new Error(`Error al crear log: ${response.status} ${response.statusText}${responseBody ? ` - ${responseBody}` : ''}`);
+  }
+};
+
+const getBalanceReturnType = (balance: Balance): CustomerReturnTypeOptions => {
+  const normalizedType = balance.type
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+
+  if (normalizedType === 'AUTOMATICA') {
+    return CustomerReturnTypeOptions.AUTOMATICA;
+  }
+
+  return CustomerReturnTypeOptions.MANUAL;
 };
 
 export enum CustomerCreditStatus {
