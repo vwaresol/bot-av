@@ -13,3 +13,4 @@ export const satPaths = {
   //start: 'https://login.mat.sat.gob.mx/nidp/app/login?id=contr-dual-eFirma-totp',
   // balanceCheck: 'https://wwwmat.sat.gob.mx/operacion/60336/consulta-tu-devolucion-automatica-2021',
 };
+//*[@id="body"]/div[1]/main/div[3]/section/div/div[3]
